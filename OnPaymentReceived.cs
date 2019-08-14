@@ -16,6 +16,7 @@ namespace PluralsightFunc
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             [Queue("orders")] IAsyncCollector<Order> orderQueue,
+            [Table("orders")] IAsyncCollector<Order> orderTable,
             ILogger log)
         {
             log.LogInformation("Received a Payment");
@@ -26,6 +27,11 @@ namespace PluralsightFunc
             //dynamic data = JsonConvert.DeserializeObject(requestBody);
             var order = JsonConvert.DeserializeObject<Order>(requestBody);
             await orderQueue.AddAsync(order);
+
+            order.PartitionKey = "orders"; // just one partition (for demo purposes)
+            order.RowKey = order.OrderId;
+            await orderTable.AddAsync(order);
+
             log.LogInformation($"Order {order.OrderId} recieved from {order.Email} for product {order.ProductId}");
             //name = name ?? data?.name;
 
@@ -38,6 +44,8 @@ namespace PluralsightFunc
 
     public class Order
     {
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
         public string OrderId {get;set;}
         public string ProductId {get;set;}
         public string Email {get; set;}
